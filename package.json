@@ -1,0 +1,27 @@
+{
+  "name": "time-to-market-poc",
+  "description": "Akeneo Advanced Custom Component — Value Framework POC. Displays PIM maturity metrics for the 'Product Time to Market Accelerated' business outcome.",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --mode development",
+    "build": "tsc --noEmit && vite build --mode production",
+    "build:dev": "vite build --mode development",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2"
+  },
+  "devDependencies": {
+    "@types/react": "^17.0.2",
+    "@types/react-dom": "^17.0.2",
+    "@types/node": "^22.7.4",
+    "@vitejs/plugin-react": "^4.3.1",
+    "terser": "^5.44.1",
+    "typescript": "^5.5.3",
+    "vite": "^7.2.4"
+  }
+}

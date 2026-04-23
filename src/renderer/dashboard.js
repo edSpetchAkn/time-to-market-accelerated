@@ -157,6 +157,8 @@ export function renderDashboard(container, {
   assetFamiliesFetchDebug,
   productCount,
   assetFamilyCount,
+  showCompleteness = true,
+  showAssetFamilies = true,
   timings,
   config,
 }) {
@@ -238,15 +240,19 @@ export function renderDashboard(container, {
   wrapper.appendChild(header);
 
   // ── Section 1: Completeness at 100% by channel ──
-  const completenessCards = completenessResults.map((r) =>
-    renderMetricCard(r, 'completeness', config, `Channel: ${r.channelCode}`)
-  );
-  wrapper.appendChild(renderSection('Completeness at 100% \u2014 by channel', completenessCards));
+  if (showCompleteness) {
+    const completenessCards = completenessResults.map((r) =>
+      renderMetricCard(r, 'completeness', config, `Channel: ${r.channelCode}`)
+    );
+    wrapper.appendChild(renderSection('Completeness at 100% \u2014 by channel', completenessCards));
+  }
 
   // ── Section 2: Asset management ──
-  wrapper.appendChild(renderSection('Asset management', [
-    renderMetricCard(assetFamiliesResult, 'assetFamilies', config),
-  ]));
+  if (showAssetFamilies) {
+    wrapper.appendChild(renderSection('Asset management', [
+      renderMetricCard(assetFamiliesResult, 'assetFamilies', config),
+    ]));
+  }
 
   // ── Debug panel ──
   if (config.debugMode) {

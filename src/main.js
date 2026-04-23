@@ -54,6 +54,26 @@ function waitForPim(timeoutMs = 10_000) {
   });
 }
 
+// ── Metric Visibility ─────────────────────────────────────────────────────────
+
+function getEnabledMetrics(allKeys) {
+  try {
+    const vars = globalThis.PIM.custom_variables ?? {};
+    const raw = Array.isArray(vars)
+      ? vars.find(v => v.code === 'enabled_metrics')?.value
+      : vars.enabled_metrics;
+    if (typeof raw === 'string' && raw.trim().length > 0) {
+      const requested = new Set(raw.split(',').map(k => k.trim()).filter(Boolean));
+      const valid = allKeys.filter(k => requested.has(k));
+      if (valid.length > 0) {
+        debugLog('main.enabledMetrics', valid);
+        return new Set(valid);
+      }
+    }
+  } catch (_) {}
+  return new Set(allKeys);
+}
+
 // ── Main Orchestration ────────────────────────────────────────────────────────
 
 async function run(container) {
@@ -124,6 +144,8 @@ async function run(container) {
   timings.calculate = Date.now() - t2;
 
   // ── Phase 3: Render ──
+  const enabledKeys = getEnabledMetrics(['completeness', 'assetFamilies']);
+
   const t3 = Date.now();
   renderDashboard(container, {
     completenessResults,
@@ -131,6 +153,8 @@ async function run(container) {
     assetFamiliesFetchDebug,
     productCount: products.length,
     assetFamilyCount: assetFamilies.length,
+    showCompleteness:  enabledKeys.has('completeness'),
+    showAssetFamilies: enabledKeys.has('assetFamilies'),
     timings,
     config: CONFIG,
   });

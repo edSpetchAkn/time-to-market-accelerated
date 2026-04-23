@@ -5,5 +5,8 @@
   },
   "position": "pim.activity.navigation.tab",
   "file": "time-to-market-poc.js",
-  "configuration": {}
+  "configuration": {},
+  "custom_variables": {
+    "enabled_metrics": "completeness,assetFamilies"
+  }
 }

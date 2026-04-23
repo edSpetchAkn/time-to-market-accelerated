@@ -51,7 +51,7 @@ export function renderLoading(container) {
     width: '18px',
     height: '18px',
     border: '2px solid #e8ebf0',
-    borderTopColor: '#67b373',
+    borderTopColor: '#9452ba',
     borderRadius: '50%',
     flexShrink: '0',
     animation: 'ttm-spin 0.8s linear infinite',
@@ -194,7 +194,7 @@ export function renderDashboard(container, {
   Object.assign(breadcrumb.style, {
     fontSize: '11px',
     fontWeight: '700',
-    color: '#67b373',
+    color: '#9452ba',
     letterSpacing: '0.3px',
     textTransform: 'uppercase',
     marginBottom: '10px',

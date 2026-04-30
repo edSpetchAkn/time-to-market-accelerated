@@ -9,8 +9,6 @@ export const CONFIG = {
   debugMode: false,
 
   api: {
-    sampleMaxProducts: 1000,
-    samplePageSize: 100,
     maxAssetFamilyPages: 10,
   },
 

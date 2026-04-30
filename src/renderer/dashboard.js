@@ -1,13 +1,9 @@
 /**
  * dashboard.js — Time to Market Accelerated
  *
- * Main layout renderer. Composes the header, two metric sections,
- * and optional debug panel.
- *
- * Exports:
- *   renderLoading(container)
- *   renderError(container, message)
- *   renderDashboard(container, opts)
+ * Two-phase renderer.
+ * Phase 1 — renderShell: header + family dropdown + empty metrics area.
+ * Phase 2 — renderMetrics / renderMetricsLoading: fills the metrics area.
  */
 
 import { renderMetricCard } from './metricCard.js';
@@ -28,87 +24,12 @@ function ensureGlobalStyles() {
   document.head.appendChild(style);
 }
 
-/**
- * @param {HTMLElement} container
- */
-export function renderLoading(container) {
-  ensureGlobalStyles();
-  container.innerHTML = '';
-
-  const wrap = document.createElement('div');
-  Object.assign(wrap.style, {
-    padding: '32px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    color: '#67768a',
-    fontSize: '14px',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-  });
-
-  const spinner = document.createElement('div');
-  Object.assign(spinner.style, {
-    width: '18px',
-    height: '18px',
-    border: '2px solid #e8ebf0',
-    borderTopColor: '#9452ba',
-    borderRadius: '50%',
-    flexShrink: '0',
-    animation: 'ttm-spin 0.8s linear infinite',
-  });
-
-  wrap.appendChild(spinner);
-  wrap.appendChild(document.createTextNode('Loading Time to Market data\u2026'));
-  container.appendChild(wrap);
+function getFamilyLabel(family, locale) {
+  if (!family.labels) return family.code;
+  return family.labels[locale] || family.labels['en_US'] || family.code;
 }
 
-/**
- * @param {HTMLElement} container
- * @param {string}      message
- */
-export function renderError(container, message) {
-  container.innerHTML = '';
-
-  const box = document.createElement('div');
-  Object.assign(box.style, {
-    margin: '24px',
-    padding: '20px',
-    background: '#fdf3f2',
-    border: '1px solid #d4574e44',
-    borderRadius: '6px',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-  });
-
-  const title = document.createElement('div');
-  Object.assign(title.style, {
-    fontSize: '14px',
-    fontWeight: '700',
-    color: '#d4574e',
-    marginBottom: '6px',
-  });
-  title.textContent = 'Product Time to Market Accelerated \u2014 Error';
-
-  const detail = document.createElement('div');
-  Object.assign(detail.style, {
-    fontSize: '13px',
-    color: '#67768a',
-    lineHeight: '1.5',
-  });
-  detail.textContent = message;
-
-  box.appendChild(title);
-  box.appendChild(detail);
-  container.appendChild(box);
-}
-
-/**
- * Renders a section heading + card grid.
- *
- * @param {string}          title
- * @param {HTMLElement[]}   cards
- * @returns {HTMLElement}
- */
-function renderSection(title, cards) {
+function renderSectionBlock(title, cards) {
   const section = document.createElement('div');
   Object.assign(section.style, { marginBottom: '28px' });
 
@@ -138,30 +59,73 @@ function renderSection(title, cards) {
   return section;
 }
 
+export function renderLoading(container) {
+  ensureGlobalStyles();
+  container.innerHTML = '';
+
+  const wrap = document.createElement('div');
+  Object.assign(wrap.style, {
+    padding: '32px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    color: '#67768a',
+    fontSize: '14px',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  });
+
+  const spinner = document.createElement('div');
+  Object.assign(spinner.style, {
+    width: '18px',
+    height: '18px',
+    border: '2px solid #e8ebf0',
+    borderTopColor: '#9452ba',
+    borderRadius: '50%',
+    flexShrink: '0',
+    animation: 'ttm-spin 0.8s linear infinite',
+  });
+
+  wrap.appendChild(spinner);
+  wrap.appendChild(document.createTextNode('Loading Time to Market data…'));
+  container.appendChild(wrap);
+}
+
+export function renderError(container, message) {
+  container.innerHTML = '';
+
+  const box = document.createElement('div');
+  Object.assign(box.style, {
+    margin: '24px',
+    padding: '20px',
+    background: '#fdf3f2',
+    border: '1px solid #d4574e44',
+    borderRadius: '6px',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  });
+
+  const title = document.createElement('div');
+  Object.assign(title.style, {
+    fontSize: '14px',
+    fontWeight: '700',
+    color: '#d4574e',
+    marginBottom: '6px',
+  });
+  title.textContent = 'Product Time to Market Accelerated — Error';
+
+  const detail = document.createElement('div');
+  Object.assign(detail.style, { fontSize: '13px', color: '#67768a', lineHeight: '1.5' });
+  detail.textContent = message;
+
+  box.appendChild(title);
+  box.appendChild(detail);
+  container.appendChild(box);
+}
+
 /**
- * Renders the full Time to Market Accelerated dashboard.
- *
- * @param {HTMLElement} container
- * @param {Object} opts
- * @param {Array}  opts.completenessResults     - Per-channel completeness result objects
- * @param {Object} opts.assetFamiliesResult     - Single assetFamilies metric result
- * @param {Array}  opts.assetFamiliesFetchDebug - Fetch trace strings
- * @param {number} opts.productCount            - Products in sample
- * @param {number} opts.assetFamilyCount        - Asset families fetched
- * @param {Object} opts.timings                 - { fetch, calculate, render, total } ms
- * @param {Object} opts.config                  - The CONFIG object
+ * Renders the static shell: header, family dropdown, empty metrics area.
+ * Returns { metricsArea, defaultFamilyCode }.
  */
-export function renderDashboard(container, {
-  completenessResults,
-  assetFamiliesResult,
-  assetFamiliesFetchDebug,
-  productCount,
-  assetFamilyCount,
-  showCompleteness = true,
-  showAssetFamilies = true,
-  timings,
-  config,
-}) {
+export function renderShell(container, { families, userLocale, config, onFamilyChange }) {
   ensureGlobalStyles();
   container.innerHTML = '';
 
@@ -177,20 +141,10 @@ export function renderDashboard(container, {
   // ── Header ──
   const header = document.createElement('div');
   Object.assign(header.style, {
-    marginBottom: '20px',
+    marginBottom: '16px',
     paddingBottom: '16px',
     borderBottom: '2px solid #f0f2f5',
   });
-
-  const title = document.createElement('h2');
-  Object.assign(title.style, {
-    margin: '0 0 4px',
-    fontSize: '22px',
-    fontWeight: '700',
-    color: '#11324d',
-    letterSpacing: '-0.3px',
-  });
-  title.textContent = config.businessContext.componentTitle;
 
   const breadcrumb = document.createElement('div');
   Object.assign(breadcrumb.style, {
@@ -199,10 +153,19 @@ export function renderDashboard(container, {
     color: '#9452ba',
     letterSpacing: '0.3px',
     textTransform: 'uppercase',
-    marginBottom: '10px',
+    marginBottom: '4px',
   });
-  breadcrumb.textContent =
-    `${config.businessContext.goal} \u203a ${config.businessContext.outcome}`;
+  breadcrumb.textContent = `${config.businessContext.goal} › ${config.businessContext.outcome}`;
+
+  const title = document.createElement('h2');
+  Object.assign(title.style, {
+    margin: '0 0 6px',
+    fontSize: '22px',
+    fontWeight: '700',
+    color: '#11324d',
+    letterSpacing: '-0.3px',
+  });
+  title.textContent = config.businessContext.componentTitle;
 
   const subtitle = document.createElement('div');
   Object.assign(subtitle.style, {
@@ -210,15 +173,151 @@ export function renderDashboard(container, {
     color: '#67768a',
     lineHeight: '1.6',
     maxWidth: '680px',
-    marginBottom: '12px',
   });
   subtitle.textContent =
-    'These metrics measure how effectively your PIM configuration drives speed to market \u2014 ' +
+    'These metrics measure how effectively your PIM configuration drives speed to market — ' +
     'from completeness gating to automated asset processing.';
 
-  const isSample = productCount >= config.api.sampleMaxProducts;
-  const sampleNotice = document.createElement('div');
-  Object.assign(sampleNotice.style, {
+  header.appendChild(breadcrumb);
+  header.appendChild(title);
+  header.appendChild(subtitle);
+  wrapper.appendChild(header);
+
+  // ── Family filter row ──
+  const sorted = [...families].sort((a, b) =>
+    getFamilyLabel(a, userLocale).localeCompare(getFamilyLabel(b, userLocale))
+  );
+
+  const filterRow = document.createElement('div');
+  Object.assign(filterRow.style, {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    marginBottom: '20px',
+    padding: '12px 16px',
+    background: '#f5f7fb',
+    border: '1px solid #e8ebf0',
+    borderRadius: '6px',
+  });
+
+  const filterLabel = document.createElement('label');
+  filterLabel.htmlFor = 'ttm-family-select';
+  Object.assign(filterLabel.style, {
+    fontSize: '12px',
+    fontWeight: '700',
+    color: '#67768a',
+    whiteSpace: 'nowrap',
+  });
+  filterLabel.textContent = 'Product family:';
+
+  const select = document.createElement('select');
+  select.id = 'ttm-family-select';
+  Object.assign(select.style, {
+    fontSize: '13px',
+    color: '#11324d',
+    background: '#ffffff',
+    border: '1px solid #d8dce6',
+    borderRadius: '4px',
+    padding: '5px 10px',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    minWidth: '220px',
+  });
+
+  for (const family of sorted) {
+    const opt = document.createElement('option');
+    opt.value = family.code;
+    opt.textContent = getFamilyLabel(family, userLocale);
+    select.appendChild(opt);
+  }
+
+  const noneOpt = document.createElement('option');
+  noneOpt.value = '__none__';
+  noneOpt.textContent = '(No family)';
+  select.appendChild(noneOpt);
+
+  select.addEventListener('change', () => onFamilyChange(select.value));
+
+  filterRow.appendChild(filterLabel);
+  filterRow.appendChild(select);
+  wrapper.appendChild(filterRow);
+
+  const metricsArea = document.createElement('div');
+  wrapper.appendChild(metricsArea);
+
+  container.appendChild(wrapper);
+
+  const defaultFamilyCode = sorted.length > 0 ? sorted[0].code : '__none__';
+  return { metricsArea, defaultFamilyCode };
+}
+
+export function renderMetricsLoading(metricsArea) {
+  metricsArea.innerHTML = '';
+
+  const wrap = document.createElement('div');
+  Object.assign(wrap.style, {
+    padding: '24px 0',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    color: '#67768a',
+    fontSize: '13px',
+  });
+
+  const spinner = document.createElement('div');
+  Object.assign(spinner.style, {
+    width: '16px',
+    height: '16px',
+    border: '2px solid #e8ebf0',
+    borderTopColor: '#9452ba',
+    borderRadius: '50%',
+    flexShrink: '0',
+    animation: 'ttm-spin 0.8s linear infinite',
+  });
+
+  wrap.appendChild(spinner);
+  wrap.appendChild(document.createTextNode('Loading products…'));
+  metricsArea.appendChild(wrap);
+}
+
+export function renderMetricsError(metricsArea, message) {
+  metricsArea.innerHTML = '';
+
+  const box = document.createElement('div');
+  Object.assign(box.style, {
+    marginTop: '8px',
+    padding: '16px',
+    background: '#fdf3f2',
+    border: '1px solid #d4574e44',
+    borderRadius: '6px',
+    fontSize: '13px',
+    color: '#67768a',
+    lineHeight: '1.5',
+  });
+  box.textContent = `Failed to load products: ${message}`;
+  metricsArea.appendChild(box);
+}
+
+/**
+ * Renders metric sections into the metrics area.
+ */
+export function renderMetrics(metricsArea, {
+  completenessResults,
+  assetFamiliesResult,
+  assetFamiliesFetchDebug,
+  productCount,
+  familyLabel,
+  assetFamilyCount,
+  showCompleteness = true,
+  showAssetFamilies = true,
+  timings,
+  config,
+}) {
+  metricsArea.innerHTML = '';
+
+  // ── Product count badge ──
+  const badge = document.createElement('div');
+  Object.assign(badge.style, {
     display: 'inline-flex',
     alignItems: 'center',
     gap: '6px',
@@ -228,46 +327,38 @@ export function renderDashboard(container, {
     borderRadius: '12px',
     fontSize: '11px',
     color: '#67768a',
+    marginBottom: '20px',
   });
-  sampleNotice.textContent = isSample
-    ? `Based on a sample of ${productCount.toLocaleString()} products (catalogue may be larger)`
-    : `Based on all ${productCount.toLocaleString()} products`;
+  badge.textContent = productCount > 0
+    ? `${productCount.toLocaleString()} products — ${familyLabel}`
+    : `No products found in ${familyLabel}`;
+  metricsArea.appendChild(badge);
 
-  header.appendChild(title);
-  header.appendChild(breadcrumb);
-  header.appendChild(subtitle);
-  header.appendChild(sampleNotice);
-  wrapper.appendChild(header);
-
-  // ── Section 1: Completeness at 100% by channel ──
-  if (showCompleteness) {
-    const completenessCards = completenessResults.map((r) =>
+  // ── Section 1: Completeness by channel ──
+  if (showCompleteness && completenessResults.length > 0) {
+    const cards = completenessResults.map((r) =>
       renderMetricCard(r, 'completeness', config, `Channel: ${r.channelCode}`)
     );
-    wrapper.appendChild(renderSection('Completeness at 100% \u2014 by channel', completenessCards));
+    metricsArea.appendChild(renderSectionBlock('Completeness at 100% — by channel', cards));
   }
 
   // ── Section 2: Asset management ──
   if (showAssetFamilies) {
-    wrapper.appendChild(renderSection('Asset management', [
+    metricsArea.appendChild(renderSectionBlock('Asset management', [
       renderMetricCard(assetFamiliesResult, 'assetFamilies', config),
     ]));
   }
 
   // ── Debug panel ──
   if (config.debugMode) {
-    wrapper.appendChild(
-      renderDebugPanel({
-        completenessResults,
-        assetFamiliesResult,
-        assetFamiliesFetchDebug,
-        productCount,
-        assetFamilyCount,
-        timings,
-        config,
-      })
-    );
+    metricsArea.appendChild(renderDebugPanel({
+      completenessResults,
+      assetFamiliesResult,
+      assetFamiliesFetchDebug,
+      productCount,
+      assetFamilyCount,
+      timings,
+      config,
+    }));
   }
-
-  container.appendChild(wrapper);
 }

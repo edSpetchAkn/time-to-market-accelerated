@@ -1,13 +1,30 @@
-import { fetchAllPages } from '../utils/paginate.js';
-import { CONFIG } from '../config.js';
+/**
+ * fetchProductsByFamily.js
+ *
+ * Fetches all products for a given family code, paginating until complete.
+ * Pass '__none__' to fetch products with no family assigned.
+ */
 
-export async function fetchProductSample() {
-  const maxPages = CONFIG.api.sampleMaxProducts / CONFIG.api.samplePageSize;
-  return fetchAllPages(
-    ({ page, limit }) => globalThis.PIM.api.product_uuid_v1.list({ page, limit, withCompletenesses: true }),
-    CONFIG.api.samplePageSize,
-    maxPages,
-    'products',
-    CONFIG.debugMode,
-  );
+export async function fetchProductsByFamily(familyCode) {
+  const searchFilter = familyCode === '__none__'
+    ? { family: [{ operator: 'EMPTY' }] }
+    : { family: [{ operator: 'IN', value: [familyCode] }] };
+
+  const all = [];
+  let page = 1;
+
+  while (true) {
+    const response = await globalThis.PIM.api.product_uuid_v1.list({
+      search: searchFilter,
+      page,
+      limit: 100,
+      withCompletenesses: true,
+    });
+    const items = response.items ?? [];
+    all.push(...items);
+    if (items.length === 0 || !response.links?.next) break;
+    page++;
+  }
+
+  return all;
 }

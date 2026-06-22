@@ -12,10 +12,13 @@
 
 import { CONFIG } from './config.js';
 import { debugLog, debugError, debugTime, debugTimeEnd } from './utils/logger.js';
-import { fetchProductsByFamily } from './data/fetchProductSample.js';
-import { fetchAssetFamilyList } from './data/fetchAssetFamilyList.js';
-import { calculate as calculateCompleteness } from './metrics/completeness.js';
-import { calculate as calculateAssetFamilies } from './metrics/assetFamilies.js';
+import {
+  fetchProducts,
+  fetchFamilies,
+  fetchAssetFamilies,
+  calculateCompleteness,
+  calculateAssetFamilyTransformations,
+} from '@akeneo/maturity-metrics';
 import {
   renderLoading,
   renderError,
@@ -53,26 +56,6 @@ function waitForPim(timeoutMs = 10_000) {
 
     setTimeout(poll, interval);
   });
-}
-
-// ── Schema Fetching ───────────────────────────────────────────────────────────
-
-async function fetchAllFamilies() {
-  debugTime('fetchFamilies');
-  const all = [];
-  let page = 1;
-
-  while (true) {
-    const response = await globalThis.PIM.api.family_v1.list({ page, limit: 100 });
-    const items = response.items ?? [];
-    all.push(...items);
-    debugLog('fetchFamilies', `Page ${page}: ${items.length} families (total: ${all.length})`);
-    if (items.length === 0 || !response.links?.next) break;
-    page++;
-  }
-
-  debugTimeEnd('fetchFamilies');
-  return all;
 }
 
 // ── Metric Visibility ─────────────────────────────────────────────────────────
@@ -113,7 +96,7 @@ async function runMetrics(metricsArea, { families, assetFamilies, assetFamiliesF
   try {
     const t1 = Date.now();
     debugTime('fetchProducts');
-    products = await fetchProductsByFamily(familyCode);
+    products = await fetchProducts(familyCode);
     debugTimeEnd('fetchProducts');
     timings.fetch = Date.now() - t1;
   } catch (err) {
@@ -124,15 +107,13 @@ async function runMetrics(metricsArea, { families, assetFamilies, assetFamiliesF
 
   debugLog('runMetrics', { familyCode, productsFetched: products.length });
 
-  const context = { products, assetFamilies, config: CONFIG };
-
   const enabledKeys = getEnabledMetrics(['completeness', 'assetFamilies']);
 
   const t2 = Date.now();
 
   let completenessResults;
   try {
-    completenessResults = calculateCompleteness(context);
+    completenessResults = calculateCompleteness(products);
   } catch (err) {
     debugError('metric.completeness', err);
     completenessResults = [{
@@ -147,7 +128,7 @@ async function runMetrics(metricsArea, { families, assetFamilies, assetFamiliesF
 
   let assetFamiliesResult;
   try {
-    assetFamiliesResult = calculateAssetFamilies(context);
+    assetFamiliesResult = calculateAssetFamilyTransformations(assetFamilies);
   } catch (err) {
     debugError('metric.assetFamilies', err);
     assetFamiliesResult = {
@@ -190,8 +171,8 @@ async function run(container) {
   try {
     debugTime('fetchSchema');
     const [famResult, afResult] = await Promise.all([
-      fetchAllFamilies(),
-      fetchAssetFamilyList(),
+      fetchFamilies(),
+      fetchAssetFamilies(),
     ]);
     families = famResult;
     assetFamilies = afResult.families;

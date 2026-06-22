@@ -15,6 +15,7 @@ export const CONFIG = {
   metrics: {
     completeness: {
       key: 'completeness',
+      pillar: 'Data Model',
       label: '% of Products with 100% Completeness',
       description: 'What % of your products currently pass your completeness check for every locale on this channel?',
       thresholds: { red: 50, green: 90 },
@@ -25,6 +26,7 @@ export const CONFIG = {
     },
     assetFamilies: {
       key: 'assetFamilies',
+      pillar: 'Automation',
       label: '% of Asset Families with Transformations or Product Link Rules',
       description: 'How many of your asset families have at least one transformation pipeline or product link rule configured?',
       thresholds: { red: 50, green: 90 },
